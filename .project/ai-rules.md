@@ -9,7 +9,7 @@ Notion is optional and only used for display or collaboration.
 
 ## Required Updates
 
-After every meaningful discussion or coding task:
+After every meaningful discussion or coding task that changes project state:
 
 - Update docs/STATUS.md
 - Update docs/NEXT_ACTION.md
@@ -17,14 +17,25 @@ After every meaningful discussion or coding task:
 - Update docs/DECISIONS.md if decisions change
 - Create or append today's docs/MEETINGS/YYYY-MM-DD.md
 
+Project state changes include new tasks, completed tasks, changed decisions,
+new risks, meeting notes, or changed next actions.
+
+Do not update project docs for casual chat, simple explanations, command output,
+or discussions that do not change project state.
+
 ## Working Principles
 
 - Never lose project context.
 - Never overwrite history.
 - Always keep NEXT_ACTION actionable.
+- Keep NEXT_ACTION limited to the current 1-3 actionable next steps.
 - Keep STATUS concise.
 - Keep DECISIONS append-only.
+- If a decision changes, append a new decision that supersedes the old one.
 - Keep MEETINGS chronological.
+- Use local date and time for meeting notes unless the user specifies otherwise.
+- Read existing project docs before updating them.
+- Never write secrets, credentials, API keys, tokens, or private personal data into project docs.
 
 ## AI Output Format
 
