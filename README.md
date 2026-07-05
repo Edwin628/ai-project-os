@@ -2,6 +2,34 @@
 
 This repository is the single source of truth for this project.
 
+## Quick Start
+
+Initialize AI Project OS in any existing project:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.1.0/install.sh | sh
+```
+
+Choose a project document language:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.1.0/install.sh | sh -s -- --language zh-CN
+```
+
+Preview changes without writing files:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.1.0/install.sh | sh -s -- --dry-run
+```
+
+If this package is available through npm or GitHub npm install, you can also run:
+
+```bash
+npx github:Edwin628/ai-project-os#v0.1.0 init --language same-as-user
+```
+
+Release note: publish a matching Git tag before sharing a versioned install URL.
+
 ## Rules
 
 - GitHub repository is the default project home.

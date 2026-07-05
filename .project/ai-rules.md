@@ -7,6 +7,13 @@ This GitHub repository is the single source of truth.
 Local files are the working copy.
 Notion is optional and only used for display or collaboration.
 
+## Language Policy
+
+Keep core rules, file paths, and prompts in English.
+Use `.project/config.yaml` `project_os.doc_language` for project document updates.
+The default value is `same-as-user`, which means project docs should use the
+user's current conversation language.
+
 ## Required Updates
 
 After every meaningful discussion or coding task that changes project state:

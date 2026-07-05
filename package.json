@@ -1,0 +1,19 @@
+{
+  "name": "ai-project-os",
+  "version": "0.1.0",
+  "description": "Initialize AI Project OS files in an existing project.",
+  "bin": {
+    "ai-project-os": "bin/ai-project-os.js"
+  },
+  "scripts": {
+    "init": "node bin/ai-project-os.js init",
+    "check": "node bin/ai-project-os.js --version"
+  },
+  "keywords": [
+    "ai",
+    "project-management",
+    "markdown",
+    "cli"
+  ],
+  "license": "MIT"
+}
