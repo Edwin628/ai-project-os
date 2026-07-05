@@ -13,9 +13,11 @@ This repository is the single source of truth for this project.
   - docs/BACKLOG.md
   - docs/DECISIONS.md
   - docs/MEETINGS/
-- Every AI discussion should end with:
-  - status update
-  - next action
-  - new tasks
-  - new decisions
-  - meeting note
+- Update project docs only when project state changes:
+  - status changes
+  - next action changes
+  - new tasks appear
+  - decisions change
+  - meeting notes are created
+- Do not update project docs for casual chat, simple explanations, command output,
+  or discussions that do not change project state.
