@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 const DEFAULT_LANGUAGE = "same-as-user";
 const LANGUAGE_PATTERN = /^[A-Za-z][A-Za-z0-9._-]*$/;
 const SYSTEM_TEMPLATE_PATHS = [
@@ -11,6 +11,13 @@ const SYSTEM_TEMPLATE_PATHS = [
   ".project/workflow.md",
   "prompts/project-os.md",
   "docs/MEETINGS/README.md",
+];
+const REMOVABLE_DIRECTORY_PATHS = [
+  "docs/RESEARCH",
+  "docs/MEETINGS",
+  "docs",
+  "prompts",
+  ".project",
 ];
 
 const staticTemplates = {
@@ -259,15 +266,20 @@ function buildTemplates(language) {
   };
 }
 
-function buildConfig(language, existingConfig = "") {
+function buildConfig(language, existingConfig = "", installedFiles = []) {
   const unknownLines = collectUnknownConfigLines(existingConfig);
   const preservedConfig = unknownLines.length > 0 ? `${unknownLines.join("\n")}\n` : "";
+  const installedFilesConfig =
+    installedFiles.length > 0
+      ? `  installed_files:\n${installedFiles.map((filePath) => `    - ${filePath}`).join("\n")}\n`
+      : "";
 
   return `project_os:
   version: ${JSON.stringify(VERSION)}
   doc_language: ${JSON.stringify(language)}
   managed_files:
 ${SYSTEM_TEMPLATE_PATHS.map((filePath) => `    - ${filePath}`).join("\n")}
+${installedFilesConfig}
 ${preservedConfig}`;
 }
 
@@ -308,7 +320,11 @@ function collectUnknownConfigLines(configText) {
       continue;
     }
 
-    if (indent === 2 && trimmed.startsWith("managed_files:")) {
+    if (
+      indent === 2 &&
+      (trimmed.startsWith("managed_files:") ||
+        trimmed.startsWith("installed_files:"))
+    ) {
       skippingManagedFiles = true;
       continue;
     }
@@ -332,6 +348,7 @@ function printHelp() {
 Usage:
   ai-project-os init [target-dir] [options]
   ai-project-os update [target-dir] [options]
+  ai-project-os uninstall [target-dir] [options]
 
 Options:
   --language <value>   Project docs language. Default: ${DEFAULT_LANGUAGE}
@@ -346,6 +363,7 @@ Examples:
   ai-project-os init . --language same-as-user
   ai-project-os init ./my-project --language zh-CN --dry-run
   ai-project-os update --dry-run
+  ai-project-os uninstall --dry-run
 `);
 }
 
@@ -369,7 +387,7 @@ function parseArgs(argv) {
     allowOutsideCwd: false,
   };
 
-  if (args[0] === "init" || args[0] === "update") {
+  if (args[0] === "init" || args[0] === "update" || args[0] === "uninstall") {
     options.command = args[0];
     args.shift();
   }
@@ -452,8 +470,14 @@ function assertNoSymlinkInPath(rootDir, relativePath) {
   for (const part of parts) {
     current = path.join(current, part);
 
-    if (fs.existsSync(current) && fs.lstatSync(current).isSymbolicLink()) {
-      throw new Error(`Refusing to write through symlink: ${current}`);
+    try {
+      if (fs.lstatSync(current).isSymbolicLink()) {
+        throw new Error(`Refusing to write through symlink: ${current}`);
+      }
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
     }
   }
 }
@@ -485,8 +509,8 @@ function writeTemplateFile(rootDir, relativePath, content, options, summary) {
     return;
   }
 
-  if (exists && options.backupRoot) {
-    backupExistingFile(rootDir, relativePath, options.backupRoot, summary);
+  if (exists && options.backupPrefix) {
+    backupExistingFile(rootDir, relativePath, options, summary);
   }
 
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
@@ -510,12 +534,15 @@ function mergeConfig(rootDir, options, summary) {
   const language = options.languageExplicit
     ? options.language
     : readConfigValue(existingConfig, "doc_language") || options.language;
-  const nextConfig = buildConfig(language, existingConfig);
+  const installedFiles = readConfigList(existingConfig, "installed_files");
+  const nextConfig = buildConfig(language, existingConfig, installedFiles);
 
   writeTemplateFile(rootDir, relativePath, nextConfig, { ...options, force: true }, summary);
 }
 
-function backupExistingFile(rootDir, relativePath, backupRoot, summary) {
+function backupExistingFile(rootDir, relativePath, options, summary) {
+  const backupRoot =
+    summary.backupRoot || createBackupRoot(rootDir, options.backupPrefix);
   const sourcePath = path.join(rootDir, relativePath);
   const backupPath = path.join(backupRoot, relativePath);
   const backupRootRelativePath = path.relative(rootDir, backupRoot);
@@ -532,7 +559,8 @@ function backupExistingFile(rootDir, relativePath, backupRoot, summary) {
   assertNoSymlinkInPath(rootDir, path.join(backupRootRelativePath, relativePath));
 
   fs.mkdirSync(path.dirname(backupPath), { recursive: true });
-  fs.copyFileSync(sourcePath, backupPath);
+  fs.copyFileSync(sourcePath, backupPath, fs.constants.COPYFILE_EXCL);
+  summary.backupRoot = backupRoot;
   summary.backedUp.push(relativePath);
 }
 
@@ -544,6 +572,34 @@ function readConfigValue(configText, key) {
   }
 
   return match[1].replace(/^["']|["']$/g, "");
+}
+
+function readConfigList(configText, key) {
+  const lines = configText.split(/\r?\n/);
+  const listIndex = lines.findIndex((line) => line.trim() === `${key}:`);
+  if (listIndex === -1) {
+    return [];
+  }
+
+  const values = [];
+  for (const line of lines.slice(listIndex + 1)) {
+    const trimmed = line.trim();
+    const indent = leadingWhitespaceCount(line);
+
+    if (trimmed === "") {
+      continue;
+    }
+
+    if (indent <= 2) {
+      break;
+    }
+
+    if (trimmed.startsWith("- ")) {
+      values.push(trimmed.slice(2).trim());
+    }
+  }
+
+  return values;
 }
 
 function printList(label, values) {
@@ -571,6 +627,8 @@ function initProject(options) {
     writeTemplateFile(rootDir, relativePath, content, options, summary);
   }
 
+  writeInstalledManifest(rootDir, options, summary);
+
   const action = options.dryRun ? "Dry run complete" : "AI Project OS initialized";
   console.log(`${action} in ${rootDir}`);
   console.log(`Document language: ${options.language}`);
@@ -589,12 +647,27 @@ function initProject(options) {
   console.log("  3. Keep docs updated only when project state changes");
 }
 
+function writeInstalledManifest(rootDir, options, summary) {
+  const installedFiles = [...summary.created, ...summary.overwritten];
+  const configPath = path.join(rootDir, ".project/config.yaml");
+  assertNoSymlinkInPath(rootDir, ".project/config.yaml");
+
+  if (
+    options.dryRun ||
+    installedFiles.length === 0 ||
+    !installedFiles.includes(".project/config.yaml")
+  ) {
+    return;
+  }
+
+  const config = buildConfig(options.language, "", installedFiles);
+  fs.writeFileSync(configPath, config, { encoding: "utf8", flag: "w" });
+}
+
 function updateProject(options) {
   const rootDir = ensureTargetDirectory(options.targetDir, options);
   const templates = buildTemplates(options.language);
-  const backupRoot = options.dryRun
-    ? undefined
-    : path.join(rootDir, ".project-os-backups", timestampForBackup());
+  const backupOptions = options.dryRun ? {} : { backupPrefix: "update" };
   const summary = {
     created: [],
     overwritten: [],
@@ -602,14 +675,14 @@ function updateProject(options) {
     backedUp: [],
   };
 
-  mergeConfig(rootDir, { ...options, backupRoot }, summary);
+  mergeConfig(rootDir, { ...options, ...backupOptions }, summary);
 
   for (const relativePath of SYSTEM_TEMPLATE_PATHS) {
     writeTemplateFile(
       rootDir,
       relativePath,
       templates[relativePath],
-      { ...options, force: true, backupRoot },
+      { ...options, force: true, ...backupOptions },
       summary
     );
   }
@@ -624,7 +697,7 @@ function updateProject(options) {
   printList("Skipped", summary.skipped);
 
   if (summary.backedUp.length > 0) {
-    console.log(`\nBackups written to ${backupRoot}`);
+    console.log(`\nBackups written to ${summary.backupRoot}`);
   }
 
   console.log("\nProtected project files were not touched:");
@@ -638,8 +711,176 @@ function updateProject(options) {
   console.log("  - docs/MEETINGS/YYYY-MM-DD.md");
 }
 
+function uninstallProject(options) {
+  const rootDir = ensureTargetDirectory(options.targetDir, options);
+  const configPath = path.join(rootDir, ".project/config.yaml");
+  assertNoSymlinkInPath(rootDir, ".project/config.yaml");
+  const existingConfig = fs.existsSync(configPath)
+    ? fs.readFileSync(configPath, "utf8")
+    : "";
+  const language = options.languageExplicit
+    ? options.language
+    : readConfigValue(existingConfig, "doc_language") || options.language;
+  const removableFilePaths = Object.keys(buildTemplates(language));
+  const installedFiles = new Set(readConfigList(existingConfig, "installed_files"));
+  const removablePathSet = new Set([
+    ...removableFilePaths,
+    ...REMOVABLE_DIRECTORY_PATHS,
+  ]);
+  const ownershipTemplates = templatesForOwnership(language, installedFiles);
+  const backupOptions = options.dryRun ? {} : { backupPrefix: "uninstall" };
+  const summary = {
+    removed: [],
+    missing: [],
+    backedUp: [],
+    keptDirectories: [],
+    removedDirectories: [],
+    keptModified: [],
+  };
+
+  for (const relativePath of removableFilePaths) {
+    removeProjectFile(
+      rootDir,
+      relativePath,
+      ownershipTemplates[relativePath],
+      installedFiles,
+      { ...options, ...backupOptions },
+      summary
+    );
+  }
+
+  for (const relativePath of REMOVABLE_DIRECTORY_PATHS) {
+    removeDirectoryIfEmpty(rootDir, relativePath, options, summary, removablePathSet);
+  }
+
+  const action = options.dryRun ? "Dry run complete" : "AI Project OS uninstalled";
+  console.log(`${action} in ${rootDir}`);
+
+  printList("Removed", summary.removed);
+  printList("Missing", summary.missing);
+  printList("Backed up", summary.backedUp);
+  printList("Kept modified or unowned files", summary.keptModified);
+  printList("Removed empty directories", summary.removedDirectories);
+  printList("Kept non-empty directories", summary.keptDirectories);
+
+  if (summary.backedUp.length > 0) {
+    console.log(`\nBackups written to ${summary.backupRoot}`);
+  }
+}
+
+function removeProjectFile(rootDir, relativePath, templateContent, installedFiles, options, summary) {
+  const targetPath = path.join(rootDir, relativePath);
+  const stat = lstatIfExists(targetPath);
+
+  if (!stat) {
+    summary.missing.push(relativePath);
+    return;
+  }
+
+  assertNoSymlinkInPath(rootDir, relativePath);
+
+  if (!stat.isFile()) {
+    throw new Error(`Refusing to remove non-file path: ${targetPath}`);
+  }
+
+  if (
+    !options.force &&
+    (!installedFiles.has(relativePath) ||
+      !fileMatchesContent(targetPath, templateContent))
+  ) {
+    summary.keptModified.push(relativePath);
+    return;
+  }
+
+  if (options.dryRun) {
+    summary.removed.push(relativePath);
+    return;
+  }
+
+  if (options.backupPrefix) {
+    backupExistingFile(rootDir, relativePath, options, summary);
+  }
+
+  fs.unlinkSync(targetPath);
+  summary.removed.push(relativePath);
+}
+
+function templatesForOwnership(language, installedFiles) {
+  const templates = buildTemplates(language);
+  templates[".project/config.yaml"] = buildConfig(language, "", [...installedFiles]);
+  return templates;
+}
+
+function fileMatchesContent(targetPath, expectedContent) {
+  if (expectedContent === undefined) {
+    return false;
+  }
+
+  return fs.readFileSync(targetPath, "utf8") === expectedContent;
+}
+
+function removeDirectoryIfEmpty(rootDir, relativePath, options, summary, removablePathSet) {
+  const targetPath = path.join(rootDir, relativePath);
+  const stat = lstatIfExists(targetPath);
+
+  if (!stat) {
+    return;
+  }
+
+  assertNoSymlinkInPath(rootDir, relativePath);
+
+  if (!stat.isDirectory()) {
+    summary.keptDirectories.push(relativePath);
+    return;
+  }
+
+  const remainingEntries = fs.readdirSync(targetPath).filter((entry) => {
+    const entryRelativePath = path.posix.join(relativePath, entry);
+    if (summary.keptDirectories.includes(entryRelativePath)) {
+      return true;
+    }
+
+    if (summary.keptModified.includes(entryRelativePath)) {
+      return true;
+    }
+
+    return !removablePathSet.has(entryRelativePath);
+  });
+
+  if (remainingEntries.length > 0) {
+    summary.keptDirectories.push(relativePath);
+    return;
+  }
+
+  if (options.dryRun) {
+    summary.removedDirectories.push(relativePath);
+    return;
+  }
+
+  fs.rmdirSync(targetPath);
+  summary.removedDirectories.push(relativePath);
+}
+
+function lstatIfExists(targetPath) {
+  try {
+    return fs.lstatSync(targetPath);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
 function timestampForBackup() {
   return new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "Z");
+}
+
+function createBackupRoot(rootDir, prefix) {
+  const backupParent = path.join(rootDir, ".project-os-backups");
+  assertNoSymlinkInPath(rootDir, ".project-os-backups");
+  fs.mkdirSync(backupParent, { recursive: true });
+  return fs.mkdtempSync(path.join(backupParent, `${prefix}-${timestampForBackup()}-`));
 }
 
 function main() {
@@ -658,6 +899,8 @@ function main() {
 
     if (options.command === "update") {
       updateProject(options);
+    } else if (options.command === "uninstall") {
+      uninstallProject(options);
     } else {
       initProject(options);
     }

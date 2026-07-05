@@ -1,5 +1,5 @@
 project_os:
-  version: "0.2.0"
+  version: "0.3.0"
   doc_language: "same-as-user"
   managed_files:
     - .project/ai-rules.md

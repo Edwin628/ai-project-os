@@ -2,7 +2,7 @@
 set -eu
 
 REPO="${AI_PROJECT_OS_REPO:-Edwin628/ai-project-os}"
-REF="${AI_PROJECT_OS_REF:-v0.2.0}"
+REF="${AI_PROJECT_OS_REF:-v0.3.0}"
 
 fail() {
   echo "Error: $1" >&2

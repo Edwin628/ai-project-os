@@ -17,3 +17,10 @@ This file is append-only. Do not edit or remove old decisions.
 - Context: 旧项目初始化后会持有模板拷贝，后续 Project OS 更新不会自动同步。
 - Consequences: 初始化配置记录 `project_os.version` 和 `managed_files`；`update` 只覆盖系统托管文件，项目状态文档不被触碰；覆盖前会写入 `.project-os-backups/` 备份。
 - Supersedes: None
+
+### 2026-07-06 - Add Project OS uninstall path
+
+- Decision: 新增 `uninstall` 命令，让用户可以一键移除 AI Project OS 嵌入文件。
+- Context: 项目可能只是临时试用 Project OS，或后续不再希望保留 `.project/`、`docs/`、`prompts/` 中的管理文件。
+- Consequences: 初始化时记录 `installed_files`；默认卸载只删除已归属且未修改的文件，并先备份；修改过或未归属的同名文件默认保留，`--force` 才删除。
+- Supersedes: None

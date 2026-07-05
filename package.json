@@ -1,13 +1,14 @@
 {
   "name": "ai-project-os",
-  "version": "0.2.0",
-  "description": "Initialize and update AI Project OS files in an existing project.",
+  "version": "0.3.0",
+  "description": "Initialize, update, and uninstall AI Project OS files in an existing project.",
   "bin": {
     "ai-project-os": "bin/ai-project-os.js"
   },
   "scripts": {
     "init": "node bin/ai-project-os.js init",
     "update": "node bin/ai-project-os.js update",
+    "uninstall": "node bin/ai-project-os.js uninstall",
     "check": "node bin/ai-project-os.js --version"
   },
   "keywords": [
