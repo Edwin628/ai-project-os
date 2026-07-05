@@ -1,2 +1,8 @@
 project_os:
+  version: "0.2.0"
   doc_language: "same-as-user"
+  managed_files:
+    - .project/ai-rules.md
+    - .project/workflow.md
+    - prompts/project-os.md
+    - docs/MEETINGS/README.md

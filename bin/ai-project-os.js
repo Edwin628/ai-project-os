@@ -3,9 +3,15 @@
 const fs = require("fs");
 const path = require("path");
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const DEFAULT_LANGUAGE = "same-as-user";
 const LANGUAGE_PATTERN = /^[A-Za-z][A-Za-z0-9._-]*$/;
+const SYSTEM_TEMPLATE_PATHS = [
+  ".project/ai-rules.md",
+  ".project/workflow.md",
+  "prompts/project-os.md",
+  "docs/MEETINGS/README.md",
+];
 
 const staticTemplates = {
   ".project/ai-rules.md": `# AI Project Rules
@@ -248,11 +254,76 @@ Use this directory for project research notes, references, and findings.
 
 function buildTemplates(language) {
   return {
-    ".project/config.yaml": `project_os:
-  doc_language: ${JSON.stringify(language)}
-`,
+    ".project/config.yaml": buildConfig(language),
     ...staticTemplates,
   };
+}
+
+function buildConfig(language, existingConfig = "") {
+  const unknownLines = collectUnknownConfigLines(existingConfig);
+  const preservedConfig = unknownLines.length > 0 ? `${unknownLines.join("\n")}\n` : "";
+
+  return `project_os:
+  version: ${JSON.stringify(VERSION)}
+  doc_language: ${JSON.stringify(language)}
+  managed_files:
+${SYSTEM_TEMPLATE_PATHS.map((filePath) => `    - ${filePath}`).join("\n")}
+${preservedConfig}`;
+}
+
+function collectUnknownConfigLines(configText) {
+  if (!configText.trim()) {
+    return [];
+  }
+
+  const lines = configText.split(/\r?\n/);
+  const projectOsIndex = lines.findIndex((line) => line.trim() === "project_os:");
+  if (projectOsIndex === -1) {
+    return [];
+  }
+
+  const unknownLines = [];
+  let skippingManagedFiles = false;
+
+  for (const line of lines.slice(projectOsIndex + 1)) {
+    if (line !== "" && !/^\s/.test(line)) {
+      break;
+    }
+
+    const trimmed = line.trim();
+    const indent = leadingWhitespaceCount(line);
+
+    if (skippingManagedFiles) {
+      if (trimmed === "" || indent > 2) {
+        continue;
+      }
+      skippingManagedFiles = false;
+    }
+
+    if (
+      indent === 2 &&
+      (trimmed.startsWith("version:") ||
+        trimmed.startsWith("doc_language:"))
+    ) {
+      continue;
+    }
+
+    if (indent === 2 && trimmed.startsWith("managed_files:")) {
+      skippingManagedFiles = true;
+      continue;
+    }
+
+    if (trimmed !== "") {
+      unknownLines.push(line);
+    }
+  }
+
+  return unknownLines;
+}
+
+function leadingWhitespaceCount(value) {
+  const match = value.match(/^\s*/);
+  return match ? match[0].length : 0;
 }
 
 function printHelp() {
@@ -260,6 +331,7 @@ function printHelp() {
 
 Usage:
   ai-project-os init [target-dir] [options]
+  ai-project-os update [target-dir] [options]
 
 Options:
   --language <value>   Project docs language. Default: ${DEFAULT_LANGUAGE}
@@ -273,6 +345,7 @@ Examples:
   ai-project-os init
   ai-project-os init . --language same-as-user
   ai-project-os init ./my-project --language zh-CN --dry-run
+  ai-project-os update --dry-run
 `);
 }
 
@@ -290,12 +363,14 @@ function parseArgs(argv) {
     command: "init",
     targetDir: ".",
     language: DEFAULT_LANGUAGE,
+    languageExplicit: false,
     force: false,
     dryRun: false,
     allowOutsideCwd: false,
   };
 
-  if (args[0] === "init") {
+  if (args[0] === "init" || args[0] === "update") {
+    options.command = args[0];
     args.shift();
   }
 
@@ -318,8 +393,10 @@ function parseArgs(argv) {
         throw new Error("--language requires a value");
       }
       options.language = value;
+      options.languageExplicit = true;
     } else if (arg.startsWith("--language=")) {
       options.language = arg.slice("--language=".length);
+      options.languageExplicit = true;
     } else if (arg.startsWith("-")) {
       throw new Error(`Unknown option: ${arg}`);
     } else {
@@ -369,7 +446,7 @@ function ensureTargetDirectory(targetDir, options) {
 }
 
 function assertNoSymlinkInPath(rootDir, relativePath) {
-  const parts = relativePath.split("/");
+  const parts = relativePath.split(/[\\/]+/).filter(Boolean);
   let current = rootDir;
 
   for (const part of parts) {
@@ -408,6 +485,10 @@ function writeTemplateFile(rootDir, relativePath, content, options, summary) {
     return;
   }
 
+  if (exists && options.backupRoot) {
+    backupExistingFile(rootDir, relativePath, options.backupRoot, summary);
+  }
+
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
   const flag = exists ? "w" : "wx";
   fs.writeFileSync(targetPath, content, { encoding: "utf8", flag });
@@ -417,6 +498,52 @@ function writeTemplateFile(rootDir, relativePath, content, options, summary) {
   } else {
     summary.created.push(relativePath);
   }
+}
+
+function mergeConfig(rootDir, options, summary) {
+  const relativePath = ".project/config.yaml";
+  const targetPath = path.join(rootDir, relativePath);
+  assertNoSymlinkInPath(rootDir, relativePath);
+  const existingConfig = fs.existsSync(targetPath)
+    ? fs.readFileSync(targetPath, "utf8")
+    : "";
+  const language = options.languageExplicit
+    ? options.language
+    : readConfigValue(existingConfig, "doc_language") || options.language;
+  const nextConfig = buildConfig(language, existingConfig);
+
+  writeTemplateFile(rootDir, relativePath, nextConfig, { ...options, force: true }, summary);
+}
+
+function backupExistingFile(rootDir, relativePath, backupRoot, summary) {
+  const sourcePath = path.join(rootDir, relativePath);
+  const backupPath = path.join(backupRoot, relativePath);
+  const backupRootRelativePath = path.relative(rootDir, backupRoot);
+
+  if (
+    backupRootRelativePath === ".." ||
+    backupRootRelativePath.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(backupRootRelativePath)
+  ) {
+    throw new Error(`Backup directory is outside target project: ${backupRoot}`);
+  }
+
+  assertNoSymlinkInPath(rootDir, backupRootRelativePath);
+  assertNoSymlinkInPath(rootDir, path.join(backupRootRelativePath, relativePath));
+
+  fs.mkdirSync(path.dirname(backupPath), { recursive: true });
+  fs.copyFileSync(sourcePath, backupPath);
+  summary.backedUp.push(relativePath);
+}
+
+function readConfigValue(configText, key) {
+  const pattern = new RegExp(`^\\s*${key}:\\s*(.+?)\\s*$`, "m");
+  const match = configText.match(pattern);
+  if (!match) {
+    return undefined;
+  }
+
+  return match[1].replace(/^["']|["']$/g, "");
 }
 
 function printList(label, values) {
@@ -437,6 +564,7 @@ function initProject(options) {
     created: [],
     overwritten: [],
     skipped: [],
+    backedUp: [],
   };
 
   for (const [relativePath, content] of Object.entries(templates)) {
@@ -461,6 +589,59 @@ function initProject(options) {
   console.log("  3. Keep docs updated only when project state changes");
 }
 
+function updateProject(options) {
+  const rootDir = ensureTargetDirectory(options.targetDir, options);
+  const templates = buildTemplates(options.language);
+  const backupRoot = options.dryRun
+    ? undefined
+    : path.join(rootDir, ".project-os-backups", timestampForBackup());
+  const summary = {
+    created: [],
+    overwritten: [],
+    skipped: [],
+    backedUp: [],
+  };
+
+  mergeConfig(rootDir, { ...options, backupRoot }, summary);
+
+  for (const relativePath of SYSTEM_TEMPLATE_PATHS) {
+    writeTemplateFile(
+      rootDir,
+      relativePath,
+      templates[relativePath],
+      { ...options, force: true, backupRoot },
+      summary
+    );
+  }
+
+  const action = options.dryRun ? "Dry run complete" : "AI Project OS updated";
+  console.log(`${action} in ${rootDir}`);
+  console.log(`Project OS version: ${VERSION}`);
+
+  printList("Created", summary.created);
+  printList("Updated", summary.overwritten);
+  printList("Backed up", summary.backedUp);
+  printList("Skipped", summary.skipped);
+
+  if (summary.backedUp.length > 0) {
+    console.log(`\nBackups written to ${backupRoot}`);
+  }
+
+  console.log("\nProtected project files were not touched:");
+  console.log("  - .project/project-context.md");
+  console.log("  - docs/STATUS.md");
+  console.log("  - docs/NEXT_ACTION.md");
+  console.log("  - docs/BACKLOG.md");
+  console.log("  - docs/DECISIONS.md");
+  console.log("  - docs/ROADMAP.md");
+  console.log("  - docs/RESEARCH/");
+  console.log("  - docs/MEETINGS/YYYY-MM-DD.md");
+}
+
+function timestampForBackup() {
+  return new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "Z");
+}
+
 function main() {
   try {
     const options = parseArgs(process.argv.slice(2));
@@ -475,7 +656,11 @@ function main() {
       return;
     }
 
-    initProject(options);
+    if (options.command === "update") {
+      updateProject(options);
+    } else {
+      initProject(options);
+    }
   } catch (error) {
     console.error(`Error: ${error.message}`);
     console.error("Run `ai-project-os --help` for usage.");

@@ -1,12 +1,13 @@
 {
   "name": "ai-project-os",
-  "version": "0.1.0",
-  "description": "Initialize AI Project OS files in an existing project.",
+  "version": "0.2.0",
+  "description": "Initialize and update AI Project OS files in an existing project.",
   "bin": {
     "ai-project-os": "bin/ai-project-os.js"
   },
   "scripts": {
     "init": "node bin/ai-project-os.js init",
+    "update": "node bin/ai-project-os.js update",
     "check": "node bin/ai-project-os.js --version"
   },
   "keywords": [

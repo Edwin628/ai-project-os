@@ -2,7 +2,7 @@
 set -eu
 
 REPO="${AI_PROJECT_OS_REPO:-Edwin628/ai-project-os}"
-REF="${AI_PROJECT_OS_REF:-v0.1.0}"
+REF="${AI_PROJECT_OS_REF:-v0.2.0}"
 
 fail() {
   echo "Error: $1" >&2
@@ -29,7 +29,7 @@ validate_source() {
 }
 
 run_with_npx() {
-  npx --yes "github:${REPO}#${REF}" init "$@"
+  npm_config_ignore_scripts=true npx --yes "github:${REPO}#${REF}" "$@"
 }
 
 download() {
@@ -92,10 +92,16 @@ run_with_tarball() {
     fail "failed to unpack AI Project OS."
   fi
 
-  node "${extracted_dir}/bin/ai-project-os.js" init "$@"
+  node "${extracted_dir}/bin/ai-project-os.js" "$@"
 }
 
 validate_source
+
+case "${1:-}" in
+  "" | -*)
+    set -- init "$@"
+    ;;
+esac
 
 if command -v npx >/dev/null 2>&1; then
   run_with_npx "$@"
