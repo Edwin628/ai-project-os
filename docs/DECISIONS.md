@@ -24,3 +24,10 @@ This file is append-only. Do not edit or remove old decisions.
 - Context: 项目可能只是临时试用 Project OS，或后续不再希望保留 `.project/`、`docs/`、`prompts/` 中的管理文件。
 - Consequences: 初始化时记录 `installed_files`；默认卸载只删除已归属且未修改的文件，并先备份；修改过或未归属的同名文件默认保留，`--force` 才删除。
 - Supersedes: None
+
+### 2026-07-11 - Publish to npm official registry
+
+- Decision: 将 ai-project-os 发布到 npm 官方 registry（registry.npmjs.org），支持 `npx ai-project-os@0.3.0`；发布使用 granular access token（勾选 bypass 2FA），发完即吊销。
+- Context: 用户全局 registry 是淘宝镜像（registry.npmmirror.com，只读，不能登录/发布）；npm 账号开启 2FA 但未配 TOTP app，OTP 路径走不通。files 白名单只含 bin/install.sh/README，不含项目状态文档（docs/、.project/）以避免泄露本仓库内部状态。
+- Consequences: package.json 补充 files/engines/repository/bugs/homepage/author/publishConfig；每次发版需 `--registry https://registry.npmjs.org` + granular token；淘宝镜像会自动同步官方，国内用户走镜像也能安装。
+- Supersedes: None
