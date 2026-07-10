@@ -6,7 +6,7 @@ Use this file for tasks that are known but not currently the next action.
 
 - 为 release 产物增加 SHA256 校验或签名说明。
 - 增加自动化测试覆盖 CLI 参数解析、覆盖策略和 symlink 防护。
-- 让 ai-project-os 的 init 生成 CLAUDE.md（或提供 SessionStart hook 模板），使 `.project/ai-rules.md` 自动接入 Claude Code，避免规则沦为纸面规则、AI 不触发文档更新。
+- 增加自动化测试覆盖 --agents marker block 的 append/replace/remove 与各 AI 工具 shim 生成；验证各 AI 工具（Claude/Codex/Cursor/Copilot 等）实际加载 shim 的行为。
 
 ## Ideas
 

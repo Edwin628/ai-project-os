@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 const DEFAULT_LANGUAGE = "same-as-user";
 const LANGUAGE_PATTERN = /^[A-Za-z][A-Za-z0-9._-]*$/;
 const SYSTEM_TEMPLATE_PATHS = [
@@ -19,6 +19,19 @@ const REMOVABLE_DIRECTORY_PATHS = [
   "prompts",
   ".project",
 ];
+
+const AGENTS = {
+  claude: { file: "CLAUDE.md", name: "Claude Code" },
+  codex: { file: "AGENTS.md", name: "Codex / OpenAI" },
+  cursor: { file: ".cursor/rules/ai-project-os.mdc", name: "Cursor", frontmatter: true },
+  copilot: { file: ".github/copilot-instructions.md", name: "GitHub Copilot" },
+  gemini: { file: "GEMINI.md", name: "Gemini CLI" },
+  cline: { file: ".clinerules", name: "Cline" },
+  windsurf: { file: ".windsurfrules", name: "Windsurf" },
+};
+const DEFAULT_AGENTS = ["claude", "codex"];
+const MARKER_BEGIN = "<!-- BEGIN ai-project-os -->";
+const MARKER_END = "<!-- END ai-project-os -->";
 
 const staticTemplates = {
   ".project/ai-rules.md": `# AI Project Rules
@@ -266,18 +279,22 @@ function buildTemplates(language) {
   };
 }
 
-function buildConfig(language, existingConfig = "", installedFiles = []) {
+function buildConfig(language, existingConfig = "", installedFiles = [], agents = DEFAULT_AGENTS) {
   const unknownLines = collectUnknownConfigLines(existingConfig);
   const preservedConfig = unknownLines.length > 0 ? `${unknownLines.join("\n")}\n` : "";
   const installedFilesConfig =
     installedFiles.length > 0
       ? `  installed_files:\n${installedFiles.map((filePath) => `    - ${filePath}`).join("\n")}\n`
       : "";
+  const agentsConfig =
+    agents.length > 0
+      ? `  agents:\n${agents.map((agentId) => `    - ${agentId}`).join("\n")}\n`
+      : "";
 
   return `project_os:
   version: ${JSON.stringify(VERSION)}
   doc_language: ${JSON.stringify(language)}
-  managed_files:
+${agentsConfig}  managed_files:
 ${SYSTEM_TEMPLATE_PATHS.map((filePath) => `    - ${filePath}`).join("\n")}
 ${installedFilesConfig}
 ${preservedConfig}`;
@@ -323,7 +340,8 @@ function collectUnknownConfigLines(configText) {
     if (
       indent === 2 &&
       (trimmed.startsWith("managed_files:") ||
-        trimmed.startsWith("installed_files:"))
+        trimmed.startsWith("installed_files:") ||
+        trimmed.startsWith("agents:"))
     ) {
       skippingManagedFiles = true;
       continue;
@@ -342,6 +360,176 @@ function leadingWhitespaceCount(value) {
   return match ? match[0].length : 0;
 }
 
+function parseAgentsList(value) {
+  if (value === "none") {
+    return [];
+  }
+  if (value === "all") {
+    return Object.keys(AGENTS);
+  }
+  const ids = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  for (const id of ids) {
+    if (!AGENTS[id]) {
+      throw new Error(
+        `Unknown agent: ${id}. Valid: ${Object.keys(AGENTS).join(", ")}, or all/none.`
+      );
+    }
+  }
+  return ids;
+}
+
+function shimBlockContent() {
+  return "Read and follow the rules in `.project/ai-rules.md` for AI Project OS project management.";
+}
+
+function fullAgentBlock() {
+  return `${MARKER_BEGIN}\n${shimBlockContent()}\n${MARKER_END}`;
+}
+
+function buildAgentShim(agentId) {
+  const agent = AGENTS[agentId];
+  const block = fullAgentBlock();
+  if (agent.frontmatter) {
+    return `---\ndescription: AI Project OS rules\nalwaysApply: true\n---\n\n${block}\n`;
+  }
+  return `${block}\n`;
+}
+
+function findBlockRange(content) {
+  const beginIdx = content.indexOf(MARKER_BEGIN);
+  if (beginIdx === -1) {
+    return null;
+  }
+  const endIdx = content.indexOf(MARKER_END, beginIdx);
+  if (endIdx === -1) {
+    return null;
+  }
+  return { begin: beginIdx, end: endIdx + MARKER_END.length };
+}
+
+function appendAgentBlock(content) {
+  const trimmed = content.replace(/\s+$/, "");
+  return `${trimmed}\n\n${fullAgentBlock()}\n`;
+}
+
+function replaceAgentBlock(content) {
+  const range = findBlockRange(content);
+  if (!range) {
+    return appendAgentBlock(content);
+  }
+  return content.slice(0, range.begin) + fullAgentBlock() + content.slice(range.end);
+}
+
+function removeAgentBlock(content) {
+  const range = findBlockRange(content);
+  if (!range) {
+    return { remaining: content, removed: false };
+  }
+  let remaining = content.slice(0, range.begin) + content.slice(range.end);
+  remaining = remaining.replace(/\n{3,}/g, "\n\n").replace(/^\s+|\s+$/g, "");
+  return { remaining, removed: true };
+}
+
+function isBlankContent(content) {
+  return content.trim() === "";
+}
+
+function writeAgentShim(rootDir, agentId, options, summary) {
+  const relativePath = AGENTS[agentId].file;
+  const targetPath = path.join(rootDir, relativePath);
+  assertNoSymlinkInPath(rootDir, relativePath);
+  const exists = fs.existsSync(targetPath);
+
+  if (options.dryRun) {
+    if (!exists) {
+      summary.created.push(relativePath);
+    } else {
+      const content = fs.readFileSync(targetPath, "utf8");
+      if (findBlockRange(content)) {
+        summary.shimRefreshed.push(relativePath);
+      } else {
+        summary.blockAppended.push(relativePath);
+      }
+    }
+    return;
+  }
+
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+
+  if (!exists) {
+    fs.writeFileSync(targetPath, buildAgentShim(agentId), { encoding: "utf8", flag: "wx" });
+    summary.created.push(relativePath);
+    return;
+  }
+
+  const existing = fs.readFileSync(targetPath, "utf8");
+  if (findBlockRange(existing)) {
+    const updated = replaceAgentBlock(existing);
+    if (updated !== existing) {
+      if (options.backupPrefix) {
+        backupExistingFile(rootDir, relativePath, options, summary);
+      }
+      fs.writeFileSync(targetPath, updated, { encoding: "utf8" });
+    }
+    summary.shimRefreshed.push(relativePath);
+  } else {
+    if (options.backupPrefix) {
+      backupExistingFile(rootDir, relativePath, options, summary);
+    }
+    fs.writeFileSync(targetPath, appendAgentBlock(existing), { encoding: "utf8" });
+    summary.blockAppended.push(relativePath);
+  }
+}
+
+function removeAgentShim(rootDir, agentId, options, summary) {
+  const relativePath = AGENTS[agentId].file;
+  const targetPath = path.join(rootDir, relativePath);
+  const stat = lstatIfExists(targetPath);
+
+  if (!stat) {
+    summary.shimMissing.push(relativePath);
+    return;
+  }
+
+  assertNoSymlinkInPath(rootDir, relativePath);
+
+  if (!stat.isFile()) {
+    throw new Error(`Refusing to remove non-file path: ${targetPath}`);
+  }
+
+  const existing = fs.readFileSync(targetPath, "utf8");
+  const { remaining, removed } = removeAgentBlock(existing);
+
+  if (!removed) {
+    summary.shimKept.push(relativePath);
+    return;
+  }
+
+  if (options.dryRun) {
+    if (isBlankContent(remaining)) {
+      summary.shimRemovedFile.push(relativePath);
+    } else {
+      summary.shimRemovedBlock.push(relativePath);
+    }
+    return;
+  }
+
+  if (options.backupPrefix) {
+    backupExistingFile(rootDir, relativePath, options, summary);
+  }
+
+  if (isBlankContent(remaining)) {
+    fs.unlinkSync(targetPath);
+    summary.shimRemovedFile.push(relativePath);
+  } else {
+    fs.writeFileSync(targetPath, remaining, { encoding: "utf8" });
+    summary.shimRemovedBlock.push(relativePath);
+  }
+}
+
 function printHelp() {
   console.log(`AI Project OS ${VERSION}
 
@@ -352,6 +540,9 @@ Usage:
 
 Options:
   --language <value>   Project docs language. Default: ${DEFAULT_LANGUAGE}
+  --agents <list>      AI tool shims to generate. Default: ${DEFAULT_AGENTS.join(",")}
+                       Comma list (claude,codex,cursor,...), all, or none.
+                       Supported: ${Object.keys(AGENTS).join(", ")}
   --force              Overwrite existing Project OS files
   --dry-run            Show planned changes without writing files
   --allow-outside-cwd  Allow target directory outside the current working directory
@@ -382,6 +573,8 @@ function parseArgs(argv) {
     targetDir: ".",
     language: DEFAULT_LANGUAGE,
     languageExplicit: false,
+    agents: DEFAULT_AGENTS.join(","),
+    agentsExplicit: false,
     force: false,
     dryRun: false,
     allowOutsideCwd: false,
@@ -405,6 +598,16 @@ function parseArgs(argv) {
       options.dryRun = true;
     } else if (arg === "--allow-outside-cwd") {
       options.allowOutsideCwd = true;
+    } else if (arg === "--agents") {
+      const value = args.shift();
+      if (!value || value.startsWith("-")) {
+        throw new Error("--agents requires a value");
+      }
+      options.agents = value;
+      options.agentsExplicit = true;
+    } else if (arg.startsWith("--agents=")) {
+      options.agents = arg.slice("--agents=".length);
+      options.agentsExplicit = true;
     } else if (arg === "--language") {
       const value = args.shift();
       if (!value || value.startsWith("-")) {
@@ -423,6 +626,7 @@ function parseArgs(argv) {
   }
 
   validateLanguage(options.language);
+  options.agentsList = parseAgentsList(options.agents);
 
   return options;
 }
@@ -534,8 +738,14 @@ function mergeConfig(rootDir, options, summary) {
   const language = options.languageExplicit
     ? options.language
     : readConfigValue(existingConfig, "doc_language") || options.language;
+  const configAgents = readConfigList(existingConfig, "agents");
+  const agents = options.agentsExplicit
+    ? options.agentsList
+    : configAgents.length > 0
+      ? configAgents
+      : DEFAULT_AGENTS;
   const installedFiles = readConfigList(existingConfig, "installed_files");
-  const nextConfig = buildConfig(language, existingConfig, installedFiles);
+  const nextConfig = buildConfig(language, existingConfig, installedFiles, agents);
 
   writeTemplateFile(rootDir, relativePath, nextConfig, { ...options, force: true }, summary);
 }
@@ -621,10 +831,16 @@ function initProject(options) {
     overwritten: [],
     skipped: [],
     backedUp: [],
+    blockAppended: [],
+    shimRefreshed: [],
   };
 
   for (const [relativePath, content] of Object.entries(templates)) {
     writeTemplateFile(rootDir, relativePath, content, options, summary);
+  }
+
+  for (const agentId of options.agentsList) {
+    writeAgentShim(rootDir, agentId, options, summary);
   }
 
   writeInstalledManifest(rootDir, options, summary);
@@ -632,10 +848,13 @@ function initProject(options) {
   const action = options.dryRun ? "Dry run complete" : "AI Project OS initialized";
   console.log(`${action} in ${rootDir}`);
   console.log(`Document language: ${options.language}`);
+  console.log(`Agent shims: ${options.agentsList.length > 0 ? options.agentsList.join(", ") : "(none)"}`);
 
   printList("Created", summary.created);
   printList("Overwritten", summary.overwritten);
   printList("Skipped existing files", summary.skipped);
+  printList("Appended agent block to", summary.blockAppended);
+  printList("Refreshed agent shim", summary.shimRefreshed);
 
   if (summary.skipped.length > 0 && !options.force) {
     console.log("\nRun again with --force to overwrite existing files.");
@@ -660,7 +879,7 @@ function writeInstalledManifest(rootDir, options, summary) {
     return;
   }
 
-  const config = buildConfig(options.language, "", installedFiles);
+  const config = buildConfig(options.language, "", installedFiles, options.agentsList);
   fs.writeFileSync(configPath, config, { encoding: "utf8", flag: "w" });
 }
 
@@ -673,7 +892,20 @@ function updateProject(options) {
     overwritten: [],
     skipped: [],
     backedUp: [],
+    blockAppended: [],
+    shimRefreshed: [],
   };
+
+  const configPath = path.join(rootDir, ".project/config.yaml");
+  const existingConfig = fs.existsSync(configPath)
+    ? fs.readFileSync(configPath, "utf8")
+    : "";
+  const configAgents = readConfigList(existingConfig, "agents");
+  const agentsList = options.agentsExplicit
+    ? options.agentsList
+    : configAgents.length > 0
+      ? configAgents
+      : DEFAULT_AGENTS;
 
   mergeConfig(rootDir, { ...options, ...backupOptions }, summary);
 
@@ -687,12 +919,19 @@ function updateProject(options) {
     );
   }
 
+  for (const agentId of agentsList) {
+    writeAgentShim(rootDir, agentId, { ...options, ...backupOptions }, summary);
+  }
+
   const action = options.dryRun ? "Dry run complete" : "AI Project OS updated";
   console.log(`${action} in ${rootDir}`);
   console.log(`Project OS version: ${VERSION}`);
+  console.log(`Agent shims: ${agentsList.length > 0 ? agentsList.join(", ") : "(none)"}`);
 
   printList("Created", summary.created);
   printList("Updated", summary.overwritten);
+  printList("Appended agent block to", summary.blockAppended);
+  printList("Refreshed agent shim", summary.shimRefreshed);
   printList("Backed up", summary.backedUp);
   printList("Skipped", summary.skipped);
 
@@ -721,13 +960,14 @@ function uninstallProject(options) {
   const language = options.languageExplicit
     ? options.language
     : readConfigValue(existingConfig, "doc_language") || options.language;
+  const agentsList = readConfigList(existingConfig, "agents");
   const removableFilePaths = Object.keys(buildTemplates(language));
   const installedFiles = new Set(readConfigList(existingConfig, "installed_files"));
   const removablePathSet = new Set([
     ...removableFilePaths,
     ...REMOVABLE_DIRECTORY_PATHS,
   ]);
-  const ownershipTemplates = templatesForOwnership(language, installedFiles);
+  const ownershipTemplates = templatesForOwnership(language, installedFiles, agentsList);
   const backupOptions = options.dryRun ? {} : { backupPrefix: "uninstall" };
   const summary = {
     removed: [],
@@ -736,6 +976,10 @@ function uninstallProject(options) {
     keptDirectories: [],
     removedDirectories: [],
     keptModified: [],
+    shimMissing: [],
+    shimKept: [],
+    shimRemovedFile: [],
+    shimRemovedBlock: [],
   };
 
   for (const relativePath of removableFilePaths) {
@@ -749,6 +993,10 @@ function uninstallProject(options) {
     );
   }
 
+  for (const agentId of agentsList) {
+    removeAgentShim(rootDir, agentId, { ...options, ...backupOptions }, summary);
+  }
+
   for (const relativePath of REMOVABLE_DIRECTORY_PATHS) {
     removeDirectoryIfEmpty(rootDir, relativePath, options, summary, removablePathSet);
   }
@@ -760,6 +1008,10 @@ function uninstallProject(options) {
   printList("Missing", summary.missing);
   printList("Backed up", summary.backedUp);
   printList("Kept modified or unowned files", summary.keptModified);
+  printList("Removed agent shim files", summary.shimRemovedFile);
+  printList("Removed agent blocks (kept rest)", summary.shimRemovedBlock);
+  printList("Missing agent shims", summary.shimMissing);
+  printList("Kept agent shims (no block)", summary.shimKept);
   printList("Removed empty directories", summary.removedDirectories);
   printList("Kept non-empty directories", summary.keptDirectories);
 
@@ -805,9 +1057,9 @@ function removeProjectFile(rootDir, relativePath, templateContent, installedFile
   summary.removed.push(relativePath);
 }
 
-function templatesForOwnership(language, installedFiles) {
+function templatesForOwnership(language, installedFiles, agents = DEFAULT_AGENTS) {
   const templates = buildTemplates(language);
-  templates[".project/config.yaml"] = buildConfig(language, "", [...installedFiles]);
+  templates[".project/config.yaml"] = buildConfig(language, "", [...installedFiles], agents);
   return templates;
 }
 

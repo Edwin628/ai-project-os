@@ -31,3 +31,10 @@ This file is append-only. Do not edit or remove old decisions.
 - Context: 用户全局 registry 是淘宝镜像（registry.npmmirror.com，只读，不能登录/发布）；npm 账号开启 2FA 但未配 TOTP app，OTP 路径走不通。files 白名单只含 bin/install.sh/README，不含项目状态文档（docs/、.project/）以避免泄露本仓库内部状态。
 - Consequences: package.json 补充 files/engines/repository/bugs/homepage/author/publishConfig；每次发版需 `--registry https://registry.npmjs.org` + granular token；淘宝镜像会自动同步官方，国内用户走镜像也能安装。
 - Supersedes: None
+
+### 2026-07-11 - Add --agents AI tool shims (v0.4.0)
+
+- Decision: init 生成"薄壳指针"shim 文件（默认 `CLAUDE.md` + `AGENTS.md`），用 marker block（`<!-- BEGIN/END ai-project-os -->`）块级管理；规则本体只在 `.project/ai-rules.md` 不复制；`--agents` 可选 claude/codex/cursor/copilot/gemini/cline/windsurf/all/none。
+- Context: 不同 AI 工具读不同配置文件（CLAUDE.md/AGENTS.md/.cursor/rules 等），单一 `CLAUDE.md` 不够 general；已有配置文件不能覆盖；规则复制多份会导致 update 同步噩梦。
+- Consequences: init 对已有 shim 文件追加 marker block 不覆盖；update 只刷块内；uninstall 只移除块（仅块文件删整文件，有用户内容保留剩余）；config.yaml 加 `agents` 字段；shim 父目录（.cursor/、.github/）不纳入 removable 目录避免误删用户配置。
+- Supersedes: None

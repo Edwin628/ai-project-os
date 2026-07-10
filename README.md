@@ -7,31 +7,31 @@ This repository is the single source of truth for this project.
 Initialize AI Project OS in any existing project:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.3.0/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh
 ```
 
 Choose a project document language:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.3.0/install.sh | sh -s -- --language zh-CN
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- --language zh-CN
 ```
 
 Preview changes without writing files:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.3.0/install.sh | sh -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- --dry-run
 ```
 
 Update Project OS system files in an existing project:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.3.0/install.sh | sh -s -- update --dry-run
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- update --dry-run
 ```
 
 Apply the update:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.3.0/install.sh | sh -s -- update
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- update
 ```
 
 `update` refreshes only Project OS system files and backs up overwritten files
@@ -40,19 +40,19 @@ under `.project-os-backups/`. Project state docs are not touched.
 To change the project document language during an update:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.3.0/install.sh | sh -s -- update --language en
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- update --language en
 ```
 
 Preview uninstall:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.3.0/install.sh | sh -s -- uninstall --dry-run
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- uninstall --dry-run
 ```
 
 Remove AI Project OS files:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.3.0/install.sh | sh -s -- uninstall
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- uninstall
 ```
 
 `uninstall` backs up removed files under `.project-os-backups/`, deletes only
@@ -63,15 +63,15 @@ are kept by default. Use `--force` only when you want to remove them too.
 Force uninstall:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.3.0/install.sh | sh -s -- uninstall --force
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- uninstall --force
 ```
 
 You can also install and run AI Project OS via npm:
 
 ```bash
-npx ai-project-os@0.3.0 init --language same-as-user
-npx ai-project-os@0.3.0 update --dry-run
-npx ai-project-os@0.3.0 uninstall --dry-run
+npx ai-project-os@0.4.0 init --language same-as-user
+npx ai-project-os@0.4.0 update --dry-run
+npx ai-project-os@0.4.0 uninstall --dry-run
 ```
 
 Or install it globally:
@@ -84,8 +84,35 @@ ai-project-os init --language same-as-user
 You can also install directly from GitHub without the npm registry:
 
 ```bash
-npx github:Edwin628/ai-project-os#v0.3.0 init --language same-as-user
+npx github:Edwin628/ai-project-os#v0.4.0 init --language same-as-user
 ```
+
+## AI tool integration
+
+`init` generates thin "shim" files that point your AI tool at `.project/ai-rules.md`,
+so the rules are loaded automatically without copying rule content.
+
+```bash
+# default: Claude Code + Codex/OpenAI (CLAUDE.md + AGENTS.md)
+npx ai-project-os@0.4.0 init
+
+# choose specific tools
+npx ai-project-os@0.4.0 init --agents claude,cursor
+
+# all supported tools
+npx ai-project-os@0.4.0 init --agents all
+
+# no AI tool shims
+npx ai-project-os@0.4.0 init --agents none
+```
+
+Supported tools: `claude` (CLAUDE.md), `codex` (AGENTS.md), `cursor`
+(.cursor/rules/ai-project-os.mdc), `copilot` (.github/copilot-instructions.md),
+`gemini` (GEMINI.md), `cline` (.clinerules), `windsurf` (.windsurfrules).
+
+If you already have a tool config file, AI Project OS appends a marked block
+(`<!-- BEGIN ai-project-os -->` ... `<!-- END ai-project-os -->`) instead of
+overwriting; `update` refreshes only the block, `uninstall` removes only the block.
 
 Release note: publish a matching Git tag before sharing a versioned install URL.
 

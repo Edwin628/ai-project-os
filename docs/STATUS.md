@@ -2,11 +2,11 @@
 
 ## Current State
 
-已实现 AI Project OS 一键初始化器、升级器和卸载器，可通过 Node CLI 或 versioned install.sh 将项目管理文件注入到已有项目、更新系统托管文件，或安全移除嵌入文件。v0.3.0 已发布到 npm 官方 registry，支持 `npx ai-project-os@0.3.0`。
+已实现 AI Project OS 一键初始化器、升级器和卸载器，可通过 Node CLI 或 versioned install.sh 将项目管理文件注入到已有项目、更新系统托管文件，或安全移除嵌入文件。v0.3.0 已发布到 npm 官方 registry；v0.4.0 增加 `--agents` AI 工具 shim 功能，本地测试通过，待 tag 与 publish。
 
 ## Current Stage
 
-`v0.3.0` 已发布到 npm（`ai-project-os@0.3.0`），install.sh / curl 与 npx 安装路径均已端到端验证可用。
+`v0.3.0` 已发布到 npm；`v0.4.0` `--agents` 功能实现并本地 dry-run 全场景测试通过，待打 git tag 与 npm publish。
 
 ## Recently Completed
 
@@ -20,10 +20,12 @@
 - 新增 `uninstall` 命令，支持预览、备份、按归属安全删除嵌入文件，并通过 `--force` 强制删除修改过或未归属的固定路径文件。
 - 补充 package.json 发布字段（files/engines/repository/bugs/homepage/author/publishConfig）并将 npm 安装说明写入 README。
 - 将 `ai-project-os@0.3.0` 发布到 npm 官方 registry，并端到端验证 install / .bin 链接 / npx 路径。
+- 实现 `v0.4.0` `--agents` 功能：AGENTS 注册表（claude/codex/cursor/copilot/gemini/cline/windsurf）、marker block 块级 init/update/uninstall、薄壳指针不复制规则；本地 dry-run 全场景测试通过。
 
 ## Active Risks or Blockers
 
 - 发布用的 npm granular access token（`npm_a161…`）曾在对话中暴露，需在 npmjs.com 吊销。
+- `v0.4.0` 尚未打 git tag 与 npm publish。
 - npm v10 在无 package.json 的空目录裸 `npm install <pkg>` 有边缘行为（报告成功但文件不落地），需在文档中提示用户使用 `npx` 或在已有项目中安装。
 - 公开安装命令仍属于远程代码执行路径，后续发布时应优先使用固定版本、校验和。
 
