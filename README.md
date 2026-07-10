@@ -66,12 +66,25 @@ Force uninstall:
 curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.3.0/install.sh | sh -s -- uninstall --force
 ```
 
-If this package is available through npm or GitHub npm install, you can also run:
+You can also install and run AI Project OS via npm:
+
+```bash
+npx ai-project-os@0.3.0 init --language same-as-user
+npx ai-project-os@0.3.0 update --dry-run
+npx ai-project-os@0.3.0 uninstall --dry-run
+```
+
+Or install it globally:
+
+```bash
+npm install -g ai-project-os
+ai-project-os init --language same-as-user
+```
+
+You can also install directly from GitHub without the npm registry:
 
 ```bash
 npx github:Edwin628/ai-project-os#v0.3.0 init --language same-as-user
-npx github:Edwin628/ai-project-os#v0.3.0 update --dry-run
-npx github:Edwin628/ai-project-os#v0.3.0 uninstall --dry-run
 ```
 
 Release note: publish a matching Git tag before sharing a versioned install URL.

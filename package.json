@@ -2,8 +2,29 @@
   "name": "ai-project-os",
   "version": "0.3.0",
   "description": "Initialize, update, and uninstall AI Project OS files in an existing project.",
+  "license": "MIT",
+  "author": "Edwin628",
+  "homepage": "https://github.com/Edwin628/ai-project-os#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Edwin628/ai-project-os.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Edwin628/ai-project-os/issues"
+  },
   "bin": {
     "ai-project-os": "bin/ai-project-os.js"
+  },
+  "files": [
+    "bin",
+    "install.sh",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "init": "node bin/ai-project-os.js init",
@@ -16,6 +37,5 @@
     "project-management",
     "markdown",
     "cli"
-  ],
-  "license": "MIT"
+  ]
 }
