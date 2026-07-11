@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf '%s\\n' 'Repository instructions are stored in .project/ai-rules.md. Read them before making changes.'"
+          }
+        ]
+      }
+    ]
+  }
+}

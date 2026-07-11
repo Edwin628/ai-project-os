@@ -38,3 +38,10 @@ This file is append-only. Do not edit or remove old decisions.
 - Context: 不同 AI 工具读不同配置文件（CLAUDE.md/AGENTS.md/.cursor/rules 等），单一 `CLAUDE.md` 不够 general；已有配置文件不能覆盖；规则复制多份会导致 update 同步噩梦。
 - Consequences: init 对已有 shim 文件追加 marker block 不覆盖；update 只刷块内；uninstall 只移除块（仅块文件删整文件，有用户内容保留剩余）；config.yaml 加 `agents` 字段；shim 父目录（.cursor/、.github/）不纳入 removable 目录避免误删用户配置。
 - Supersedes: None
+
+### 2026-07-11 - Wire ai-rules into Claude Code (CLAUDE.md + SessionStart hook)
+
+- Decision: 本仓库用 `CLAUDE.md` 作正式规则入口（`update --agents claude` 生成，marker block 指向 `.project/ai-rules.md`），`.claude/settings.json` 的 SessionStart hook 只 `printf` 一句提醒读 ai-rules.md，不注入全文。
+- Context: 仓库缺 CLAUDE.md/hook，规则是纸面规则，AI 不自动加载导致漏更新 docs；hook 注入全文会浪费上下文，一句提醒 + CLAUDE.md 入口更轻量。
+- Consequences: 本仓库 dogfood 升级到 0.4.0 + 加 `agents: [claude]`；新会话启动时 hook 提醒读 ai-rules.md；`.project-os-backups/` 与 `.claude/settings.local.json` 加入 `.gitignore`。
+- Supersedes: None

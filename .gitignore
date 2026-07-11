@@ -1,0 +1,8 @@
+# AI Project OS local backups (written by update/uninstall)
+.project-os-backups/
+
+# Node
+node_modules/
+
+# Claude Code local settings (personal permissions)
+.claude/settings.local.json
