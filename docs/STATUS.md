@@ -2,11 +2,11 @@
 
 ## Current State
 
-已实现 AI Project OS 一键初始化器、升级器和卸载器，可通过 Node CLI 或 versioned install.sh 将项目管理文件注入到已有项目、更新系统托管文件，或安全移除嵌入文件。v0.3.0 与 v0.4.0 均已发布到 npm；本仓库已用 `update --agents claude` 接入 Claude Code 工作流（CLAUDE.md + SessionStart hook）并 dogfood 升级到 0.4.0。
+已实现 AI Project OS 一键初始化器、升级器和卸载器，可通过 Node CLI 或 versioned install.sh 将项目管理文件注入到已有项目、更新系统托管文件，或安全移除嵌入文件。v0.3.0 与 v0.4.0 均已发布到 npm；本仓库已用 `update --agents claude` 接入 Claude Code 工作流（CLAUDE.md + SessionStart hook）并 dogfood 升级。v0.5.0 为 `docs/RESEARCH/` 补上明确更新触发条件（技术发现/外部参考/调研结论），待发布。
 
 ## Current Stage
 
-`v0.4.0` 已发布到 npm（含 `--agents` AI 工具 shim）；本仓库已接入 Claude Code 工作流，规则从纸面变为自动加载。
+`v0.5.0` 已开发完成（新增 RESEARCH 更新触发规则，同步 ai-rules/workflow/prompts 及内置模板），待发布到 npm；`v0.4.0`（含 `--agents` AI 工具 shim）已发布。本仓库已接入 Claude Code 工作流，规则从纸面变为自动加载。
 
 ## Recently Completed
 
@@ -23,6 +23,7 @@
 - 实现 `v0.4.0` `--agents` 功能：AGENTS 注册表（claude/codex/cursor/copilot/gemini/cline/windsurf）、marker block 块级 init/update/uninstall、薄壳指针不复制规则；本地 dry-run 全场景测试通过。
 - 将 `ai-project-os@0.4.0` 发布到 npm（tag `v0.4.0` + publish），`npx ai-project-os@0.4.0 init --dry-run --agents all` 端到端验证通过。
 - 本仓库 dogfood：`update --agents claude` 生成 `CLAUDE.md`（marker block 指向 `.project/ai-rules.md`）+ 升级 config 到 0.4.0；配 `.claude/settings.json` SessionStart hook 提醒读 ai-rules.md；加 `.gitignore`。
+- 为 `docs/RESEARCH/` 补充更新触发条件（技术发现/外部参考/调研结论），同步 `.project/ai-rules.md`、`.project/workflow.md`、`prompts/project-os.md` 及 `bin/ai-project-os.js` 内置模板，VERSION 与 package.json bump 到 0.5.0，本仓库 config 同步到 0.5.0。
 
 ## Active Risks or Blockers
 
@@ -33,4 +34,4 @@
 
 ## Last Updated
 
-2026-07-11
+2026-07-12

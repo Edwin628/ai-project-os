@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const VERSION = "0.4.0";
+const VERSION = "0.5.0";
 const DEFAULT_LANGUAGE = "same-as-user";
 const LANGUAGE_PATTERN = /^[A-Za-z][A-Za-z0-9._-]*$/;
 const SYSTEM_TEMPLATE_PATHS = [
@@ -59,6 +59,7 @@ After every meaningful discussion or coding task that changes project state:
 - Update docs/BACKLOG.md if new tasks appear
 - Update docs/DECISIONS.md if decisions change
 - Create or append today's docs/MEETINGS/YYYY-MM-DD.md
+- Add to docs/RESEARCH/ when a new technical finding, external reference, or investigation outcome should be recorded
 
 Project state changes include new tasks, completed tasks, changed decisions,
 new risks, meeting notes, or changed next actions.
@@ -89,6 +90,7 @@ When asked to update project docs, output changes for:
 3. BACKLOG.md
 4. DECISIONS.md
 5. MEETING note
+6. RESEARCH note (when a finding or reference should be recorded)
 `,
   ".project/project-context.md": `# Project Context
 
@@ -132,6 +134,7 @@ At the end of each meaningful discussion or coding task that changes project sta
 - docs/BACKLOG.md
 - docs/DECISIONS.md
 - docs/MEETINGS/YYYY-MM-DD.md
+- docs/RESEARCH/ (technical findings, references, investigation outcomes)
 `,
   "prompts/project-os.md": `# AI Project OS Prompt
 
@@ -154,6 +157,7 @@ Update these files when relevant:
 - docs/BACKLOG.md
 - docs/DECISIONS.md
 - docs/MEETINGS/YYYY-MM-DD.md
+- docs/RESEARCH/ (technical findings, references, investigation outcomes)
 `,
   "docs/STATUS.md": `# Status
 

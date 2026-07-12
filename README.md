@@ -7,31 +7,31 @@ This repository is the single source of truth for this project.
 Initialize AI Project OS in any existing project:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.5.0/install.sh | sh
 ```
 
 Choose a project document language:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- --language zh-CN
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.5.0/install.sh | sh -s -- --language zh-CN
 ```
 
 Preview changes without writing files:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.5.0/install.sh | sh -s -- --dry-run
 ```
 
 Update Project OS system files in an existing project:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- update --dry-run
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.5.0/install.sh | sh -s -- update --dry-run
 ```
 
 Apply the update:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- update
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.5.0/install.sh | sh -s -- update
 ```
 
 `update` refreshes only Project OS system files and backs up overwritten files
@@ -40,19 +40,19 @@ under `.project-os-backups/`. Project state docs are not touched.
 To change the project document language during an update:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- update --language en
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.5.0/install.sh | sh -s -- update --language en
 ```
 
 Preview uninstall:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- uninstall --dry-run
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.5.0/install.sh | sh -s -- uninstall --dry-run
 ```
 
 Remove AI Project OS files:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- uninstall
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.5.0/install.sh | sh -s -- uninstall
 ```
 
 `uninstall` backs up removed files under `.project-os-backups/`, deletes only
@@ -63,15 +63,15 @@ are kept by default. Use `--force` only when you want to remove them too.
 Force uninstall:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.4.0/install.sh | sh -s -- uninstall --force
+curl -fsSL https://raw.githubusercontent.com/Edwin628/ai-project-os/v0.5.0/install.sh | sh -s -- uninstall --force
 ```
 
 You can also install and run AI Project OS via npm:
 
 ```bash
-npx ai-project-os@0.4.0 init --language same-as-user
-npx ai-project-os@0.4.0 update --dry-run
-npx ai-project-os@0.4.0 uninstall --dry-run
+npx ai-project-os@0.5.0 init --language same-as-user
+npx ai-project-os@0.5.0 update --dry-run
+npx ai-project-os@0.5.0 uninstall --dry-run
 ```
 
 Or install it globally:
@@ -84,7 +84,7 @@ ai-project-os init --language same-as-user
 You can also install directly from GitHub without the npm registry:
 
 ```bash
-npx github:Edwin628/ai-project-os#v0.4.0 init --language same-as-user
+npx github:Edwin628/ai-project-os#v0.5.0 init --language same-as-user
 ```
 
 ## AI tool integration
@@ -94,16 +94,16 @@ so the rules are loaded automatically without copying rule content.
 
 ```bash
 # default: Claude Code + Codex/OpenAI (CLAUDE.md + AGENTS.md)
-npx ai-project-os@0.4.0 init
+npx ai-project-os@0.5.0 init
 
 # choose specific tools
-npx ai-project-os@0.4.0 init --agents claude,cursor
+npx ai-project-os@0.5.0 init --agents claude,cursor
 
 # all supported tools
-npx ai-project-os@0.4.0 init --agents all
+npx ai-project-os@0.5.0 init --agents all
 
 # no AI tool shims
-npx ai-project-os@0.4.0 init --agents none
+npx ai-project-os@0.5.0 init --agents none
 ```
 
 Supported tools: `claude` (CLAUDE.md), `codex` (AGENTS.md), `cursor`

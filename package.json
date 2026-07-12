@@ -1,6 +1,6 @@
 {
   "name": "ai-project-os",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Initialize, update, and uninstall AI Project OS files in an existing project.",
   "license": "MIT",
   "author": "Edwin628",

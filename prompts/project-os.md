@@ -19,3 +19,4 @@ Update these files when relevant:
 - docs/BACKLOG.md
 - docs/DECISIONS.md
 - docs/MEETINGS/YYYY-MM-DD.md
+- docs/RESEARCH/ (technical findings, references, investigation outcomes)

@@ -45,3 +45,10 @@ This file is append-only. Do not edit or remove old decisions.
 - Context: 仓库缺 CLAUDE.md/hook，规则是纸面规则，AI 不自动加载导致漏更新 docs；hook 注入全文会浪费上下文，一句提醒 + CLAUDE.md 入口更轻量。
 - Consequences: 本仓库 dogfood 升级到 0.4.0 + 加 `agents: [claude]`；新会话启动时 hook 提醒读 ai-rules.md；`.project-os-backups/` 与 `.claude/settings.local.json` 加入 `.gitignore`。
 - Supersedes: None
+
+### 2026-07-12 - Add RESEARCH update rule to ai-rules (v0.5.0)
+
+- Decision: 在 `ai-rules.md` 的 Required Updates 与 AI Output Format、`workflow.md`、`prompts/project-os.md` 中为 `docs/RESEARCH/` 增加明确更新触发条件——当产生新的技术发现、外部参考资料或调研结论时写入 RESEARCH。
+- Context: RESEARCH 目录此前只有占位 README 一句话，没有任何触发条件，AI 在「项目状态变更」时不会自动维护它，属于规则缺口；用户追问后确认补齐。
+- Consequences: RESEARCH 从纯自由区升级为有生命周期的文档；实文件与 `bin/ai-project-os.js` 内置模板同步更新；VERSION 与 package.json bump 到 0.5.0，本仓库 config 同步到 0.5.0；RESEARCH 仍为 protected 文件，`update` 不触碰已有内容；已装项目需 `update` 才能拿到新规则。
+- Supersedes: None

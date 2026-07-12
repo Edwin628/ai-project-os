@@ -20,3 +20,4 @@ At the end of each meaningful discussion or coding task that changes project sta
 - docs/BACKLOG.md
 - docs/DECISIONS.md
 - docs/MEETINGS/YYYY-MM-DD.md
+- docs/RESEARCH/ (technical findings, references, investigation outcomes)
